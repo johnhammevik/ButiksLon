@@ -63,6 +63,24 @@
     footer {max-width:1050px;margin:0 auto 30px;padding:0 20px;text-align:center;font-size:13px;color:var(--muted)}
     @media(max-width:770px){.layout{grid-template-columns:1fr}.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.panel{padding:20px}.hero{padding-top:28px}.stat{padding:13px}.stat strong{font-size:21px}}
     @media(max-width:370px){.fields{grid-template-columns:1fr}.stat strong{font-size:18px}.hero h1{font-size:32px}}
+
+    /* Quinyx-kalenderimport */
+    .import-lead {background:#e9f6f3;border:1px solid #bee7df;padding:13px;border-radius:12px;color:#204e49;font-size:14px;margin:15px 0}
+    input[type="file"]{padding:10px;background:#f9fcfc}
+    .import-summary{background:#eff6fa;border-radius:10px;padding:13px;margin:14px 0;color:#315361;font-size:14px;line-height:1.5}
+    .import-summary strong{display:block;color:#183044;margin-bottom:3px}
+    .import-table{min-width:740px;font-size:13px}
+    .import-table th,.import-table td{padding:9px 7px;vertical-align:middle}
+    .import-table .check-cell{width:36px;text-align:center}
+    .import-table input[type="checkbox"]{width:19px;height:19px;cursor:pointer;accent-color:var(--teal)}
+    .import-table input[type="time"]{width:105px;padding:8px;font-size:13px}
+    .import-table .event-name{max-width:190px;overflow-wrap:anywhere}
+    .import-table .duplicate{color:#8c4f17;font-size:12px}
+    .import-table tr.duplicate-row{background:#fffaf1}
+    .import-table td:last-child{text-align:left}
+    .import-actions{align-items:center}
+    .import-note{color:#735018;font-size:13px;margin-top:12px}
+    .success{color:#185d48;background:#e5f7ef;border:1px solid #b7e7cf;padding:11px 12px;border-radius:10px;font-size:14px;margin-top:12px}
   </style>
 </head>
 <body>
@@ -109,6 +127,33 @@
             <div id="formError" class="error" role="alert" hidden></div>
           </form>
         </section>
+
+        <section class="panel" id="calendarImport">
+          <h2>3. Importera schema från Quinyx</h2>
+          <p class="sub">Läs in en kalenderfil (.ics) från ditt schema. Kontrollera passen innan de läggs till i din löneuträkning.</p>
+          <div class="import-lead"><strong>🔒 Privat import</strong><br>Kalenderfilen läses endast på din enhet. Den laddas inte upp till GitHub, Quinyx eller vår server. Bara passen du godkänner sparas i din webbläsare.</div>
+          <label for="icsFile">Välj din kalenderfil (.ics)</label>
+          <input id="icsFile" type="file" accept=".ics,text/calendar" aria-describedby="icsHelp">
+          <p class="hint" id="icsHelp">Välj en hämtad .ics-fil, inte din privata Quinyx-kalenderlänk. Välj bara <strong>schemalagda skift</strong> när du skapar kalendern i Quinyx.</p>
+          <div id="importSummary" class="import-summary" role="status" aria-live="polite" hidden></div>
+          <div id="importPreview" hidden>
+            <p class="import-note"><strong>Viktigt:</strong> Kontrollera att varje rad verkligen är ett arbetspass. Fyll i rastens start och slut där du haft obetald rast. Kalendern anger inte alltid raster, och då blir lönen annars för hög.</p>
+            <div class="scroll">
+              <table class="import-table" aria-label="Förhandsgranskning av kalenderpass">
+                <thead><tr><th class="check-cell">Välj</th><th>Datum</th><th>Tid</th><th>Kalenderpost</th><th>Rast från</th><th>Rast till</th></tr></thead>
+                <tbody id="importRows"></tbody>
+              </table>
+            </div>
+            <div class="buttons import-actions">
+              <button id="selectAllImport" type="button" class="secondary">Markera möjliga pass</button>
+              <button id="importSubmit" type="button" class="primary">Importera markerade pass</button>
+              <button id="importCancel" type="button" class="secondary">Avbryt</button>
+            </div>
+          </div>
+          <div id="importError" class="error" role="alert" hidden></div>
+          <div id="importSuccess" class="success" role="status" hidden></div>
+          <p class="info">Stödjer enstaka kalenderpass med angivna start- och sluttider. Återkommande kalenderregler och heldagshändelser hoppas över. Importen uppdateras inte automatiskt när schemat ändras i Quinyx.</p>
+        </section>
       </div>
 
       <div>
@@ -150,7 +195,7 @@
       <p class="info">Pass sparas bara lokalt i den här webbläsaren. Exportera gärna en säkerhetskopia som CSV.</p>
     </section>
   </main>
-  <footer>ButiksLön – en fristående lönekalkylator, inte en officiell tjänst från Handels eller Skatteverket.</footer>
+  <footer>ButiksLön version 2 – en fristående lönekalkylator, inte en officiell tjänst från Handels eller Skatteverket.</footer>
 
   <script>
     'use strict';
@@ -312,6 +357,234 @@
       const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob);
       const a=document.createElement('a');a.href=url;a.download='butikslon-arbetspass.csv';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     });
+
+    // Kalenderimport. Filen läses med File.text() – inga nätverksanrop eller externa skript.
+    const MAX_ICS_SIZE = 2 * 1024 * 1024;
+    const MAX_ICS_EVENTS = 600;
+    let calendarCandidates = [];
+
+    const stockholmFormat = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Stockholm', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+    });
+    const zoneFormatters = new Map();
+    function timeFields(value, formatter) {
+      const parts = {};
+      for (const p of formatter.formatToParts(value)) {
+        if (p.type !== 'literal') parts[p.type] = Number(p.value);
+      }
+      return parts;
+    }
+    function getZoneFormatter(tz) {
+      if (!zoneFormatters.has(tz)) {
+        zoneFormatters.set(tz, new Intl.DateTimeFormat('en-GB', {
+          timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+        }));
+      }
+      return zoneFormatters.get(tz);
+    }
+    function wallTimeInZoneToUTC(wall, tz) {
+      // Lös tidszonsförskjutningen iterativt (även när Sverige byter sommar-/vintertid).
+      const formatter = getZoneFormatter(tz);
+      const wanted = Date.UTC(wall.y,wall.mo-1,wall.d,wall.h,wall.mi,wall.s);
+      let guess = wanted;
+      for (let i=0; i<5; i++) {
+        const p = timeFields(new Date(guess),formatter);
+        const shown = Date.UTC(p.year,p.month-1,p.day,p.hour,p.minute,p.second);
+        const delta = wanted-shown;
+        if (delta===0) break;
+        guess += delta;
+      }
+      const p = timeFields(new Date(guess),formatter);
+      if (p.year!==wall.y||p.month!==wall.mo||p.day!==wall.d||p.hour!==wall.h||p.minute!==wall.mi||p.second!==wall.s) {
+        throw new Error('En tid inträffar inte i angiven tidszon (omställning till sommartid).');
+      }
+      return new Date(guess);
+    }
+    function parseCalendarTime(prop) {
+      if (!prop) throw new Error('Starttid eller sluttid saknas.');
+      if (/VALUE=DATE(?:;|$)/i.test(prop.left)) throw new Error('Heldagshändelser kan inte räknas som arbetspass.');
+      const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})?(Z)?$/.exec(prop.value.trim());
+      if (!m) throw new Error('Tidsformatet i kalendern stöds inte.');
+      const wall = {y:+m[1],mo:+m[2],d:+m[3],h:+m[4],mi:+m[5],s:+(m[6]||0)};
+      const sample = new Date(Date.UTC(wall.y,wall.mo-1,wall.d,wall.h,wall.mi,wall.s));
+      if (sample.getUTCFullYear()!==wall.y||sample.getUTCMonth()+1!==wall.mo||sample.getUTCDate()!==wall.d||wall.h>23||wall.mi>59||wall.s>59) throw new Error('Ogiltigt datum eller klockslag.');
+      let tzid = /(?:^|;)TZID=(?:"([^"]+)"|([^;]+))/i.exec(prop.left);
+      tzid = tzid && (tzid[1]||tzid[2]);
+      let local;
+      if (m[7]) {
+        local = timeFields(sample, stockholmFormat);
+      } else if (tzid) {
+        // Vissa kalendrar har TZID med inledande snedstreck.
+        const zone = tzid.replace(/^\//,'');
+        local = timeFields(wallTimeInZoneToUTC(wall,zone),stockholmFormat);
+      } else {
+        // Flytande tider tolkas som svenska lokala tider i denna svenska löneapp.
+        local = {year:wall.y,month:wall.mo,day:wall.d,hour:wall.h,minute:wall.mi};
+      }
+      return {date:`${local.year}-${pad2(local.month)}-${pad2(local.day)}`,time:`${pad2(local.hour)}:${pad2(local.minute)}`};
+    }
+    function unfoldICS(raw) {
+      return raw.replace(/^\uFEFF/,'').split(/\r\n|\n|\r/).reduce((lines,line)=>{
+        if (/^[ \t]/.test(line) && lines.length) lines[lines.length-1] += line.slice(1);
+        else lines.push(line);
+        return lines;
+      },[]);
+    }
+    function parseCalendarFile(text) {
+      const lines = unfoldICS(text);
+      if (!lines.some(x=>/^BEGIN:VCALENDAR\s*$/i.test(x))) throw new Error('Filen är inte en giltig iCalendar-fil (.ics).');
+      const rawEvents=[];
+      let event=null;
+      for (const line of lines) {
+        if (/^BEGIN:VEVENT\s*$/i.test(line)) {
+          if(event) throw new Error('Kalenderfilens struktur är ogiltig.');
+          event={};
+        } else if (/^END:VEVENT\s*$/i.test(line)) {
+          if(!event) continue;
+          rawEvents.push(event);event=null;
+          if(rawEvents.length>MAX_ICS_EVENTS) throw new Error('Filen innehåller fler än 600 kalenderposter. Välj en kortare period.');
+        } else if(event) {
+          const sep=line.indexOf(':');
+          if(sep<1) continue;
+          const left=line.slice(0,sep),name=left.split(';')[0].toUpperCase();
+          if(!event[name]) event[name]={left,value:line.slice(sep+1)};
+        }
+      }
+      const existing = new Set(state.shifts.map(shiftSignature));
+      const found = new Set(), result=[];
+      const skipped = {cancelled:0,allDay:0,unsupported:0,recurring:0,duplicates:0};
+      for (const raw of rawEvents) {
+        if((raw.STATUS?.value||'').toUpperCase()==='CANCELLED'){skipped.cancelled++;continue;}
+        if(raw.RRULE||raw.RDATE){skipped.recurring++;continue;}
+        try {
+          const start=parseCalendarTime(raw.DTSTART),end=parseCalendarTime(raw.DTEND);
+          const startDate=new Date(`${start.date}T00:00:00`),endDate=new Date(`${end.date}T00:00:00`);
+          const dayDelta=Math.round((Date.UTC(+end.date.slice(0,4),+end.date.slice(5,7)-1,+end.date.slice(8,10))-Date.UTC(+start.date.slice(0,4),+start.date.slice(5,7)-1,+start.date.slice(8,10)))/86400000);
+          const startM=hm(start.time),endM=hm(end.time);
+          if(!Number.isFinite(startDate.getTime())||!Number.isFinite(endDate.getTime()) || !(dayDelta===0&&endM>startM || dayDelta===1&&endM<startM)) throw new Error('Arbetspasset är för långt eller har ogiltiga tider.');
+          const pass={date:start.date,start:start.time,end:end.time,breakStart:'',breakEnd:''};
+          const problem=validate(pass);
+          if(problem) throw new Error(problem);
+          const signature=shiftSignature(pass);
+          if(existing.has(signature)||found.has(signature)){skipped.duplicates++;continue;}
+          found.add(signature);
+          const title=(raw.SUMMARY?.value||'Schemapass').replace(/\\[,;nN]/g,x=>x.toLowerCase()==='\\n'?' ':x.slice(1)).slice(0,120);
+          const likelyNotShift=/(frånvaro|semester|sjuk|ledighet|ledigt|absence|vacation|sick|time off|day off|unassigned|ledig\s+dag)/i.test(title);
+          result.push({pass,title,selected:!likelyNotShift,possiblyNotShift:likelyNotShift});
+        } catch (err) {
+          if(/Heldagshändelser/.test(err.message)) skipped.allDay++;
+          else skipped.unsupported++;
+        }
+      }
+      result.sort((a,b)=>a.pass.date.localeCompare(b.pass.date)||a.pass.start.localeCompare(b.pass.start));
+      return {result,skipped,rawCount:rawEvents.length};
+    }
+    function shiftSignature(pass) {
+      return `${pass.date}|${pass.start}|${pass.end}`;
+    }
+    function hideImportMessages() {
+      $('importError').hidden = true;
+      $('importSuccess').hidden = true;
+    }
+    function setImportError(message) {
+      $('importError').textContent = message;
+      $('importError').hidden = false;
+    }
+    function clearImportPreview() {
+      calendarCandidates=[];
+      $('icsFile').value='';
+      $('importRows').replaceChildren();
+      $('importPreview').hidden=true;
+      $('importSummary').hidden=true;
+      hideImportMessages();
+    }
+    function showCalendarPreview(data) {
+      calendarCandidates=data.result;
+      const skip=data.skipped;
+      $('importSummary').hidden=false;
+      $('importSummary').replaceChildren();
+      const heading=document.createElement('strong');
+      heading.textContent=`${data.rawCount} kalenderposter lästa · ${data.result.length} möjliga nya pass`;
+      const description=document.createElement('span');
+      description.textContent=`Överhoppade: ${skip.duplicates} dubbletter, ${skip.cancelled} avbokade, ${skip.allDay} heldagar, ${skip.recurring} återkommande regler och ${skip.unsupported} med okänt format/ogiltiga tider.`;
+      $('importSummary').append(heading,description);
+      $('importRows').replaceChildren();
+      for(const [i,candidate] of calendarCandidates.entries()){
+        const tr=document.createElement('tr');
+        if(candidate.possiblyNotShift) tr.className='duplicate-row';
+        const choose=document.createElement('td');choose.className='check-cell';
+        const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=candidate.selected;
+        checkbox.setAttribute('aria-label',`Importera ${candidate.title} ${candidate.pass.date} ${candidate.pass.start}`);
+        checkbox.addEventListener('change',()=>candidate.selected=checkbox.checked);
+        choose.append(checkbox);
+        const dateCell=document.createElement('td');dateCell.textContent=candidate.pass.date;
+        const timeCell=document.createElement('td');timeCell.textContent=`${candidate.pass.start}–${candidate.pass.end}`;
+        const titleCell=document.createElement('td');titleCell.className='event-name';titleCell.textContent=candidate.title;
+        if(candidate.possiblyNotShift){const warn=document.createElement('div');warn.className='duplicate';warn.textContent='Kan vara ledighet/frånvaro – ej förvalt';titleCell.append(warn);}
+        const breakStartCell=document.createElement('td'),breakEndCell=document.createElement('td');
+        for(const [cell,key,name] of [[breakStartCell,'breakStart','Rast från'],[breakEndCell,'breakEnd','Rast till']]){
+          const field=document.createElement('input');field.type='time';field.value=candidate.pass[key];
+          field.setAttribute('aria-label',`${name} för ${candidate.pass.date} ${candidate.pass.start}`);
+          field.addEventListener('change',()=>{candidate.pass[key]=field.value;hideImportMessages();});
+          cell.append(field);
+        }
+        tr.append(choose,dateCell,timeCell,titleCell,breakStartCell,breakEndCell);
+        $('importRows').append(tr);
+      }
+      $('importPreview').hidden=calendarCandidates.length===0;
+      if(!calendarCandidates.length) setImportError('Inga nya pass kunde läsas. Se sammanfattningen ovan. Kontrollera att kalendern innehåller schemalagda skift med start- och sluttider.');
+    }
+    $('icsFile').addEventListener('change', async () => {
+      hideImportMessages();
+      $('importPreview').hidden=true;
+      $('importSummary').hidden=true;
+      calendarCandidates=[];
+      const file=$('icsFile').files[0];
+      if(!file)return;
+      if(file.size>MAX_ICS_SIZE){setImportError('Filen är för stor (max 2 MB). Välj en kortare kalenderperiod.');return;}
+      try {
+        const text=await file.text();
+        if($('icsFile').files[0]!==file) return;
+        showCalendarPreview(parseCalendarFile(text));
+      } catch(err) {
+        setImportError(`Kunde inte läsa kalenderfilen: ${err.message}`);
+      }
+    });
+    $('importCancel').addEventListener('click',clearImportPreview);
+    $('selectAllImport').addEventListener('click',()=>{
+      // Fortsatt ej förvalt för poster som ser ut som frånvaro.
+      for(const c of calendarCandidates) c.selected=!c.possiblyNotShift;
+      $('importRows').querySelectorAll('input[type="checkbox"]').forEach((box,i)=>box.checked=calendarCandidates[i].selected);
+      hideImportMessages();
+    });
+    $('importSubmit').addEventListener('click',()=>{
+      hideImportMessages();
+      if(!settings()){setImportError('Kontrollera timlön, semesterersättning och skatteprocent först.');return;}
+      const selected=calendarCandidates.filter(c=>c.selected);
+      if(!selected.length){setImportError('Markera minst ett arbetspass att importera.');return;}
+      for(const c of selected) {
+        const invalid=validate(c.pass);
+        if(invalid){setImportError(`${c.pass.date} ${c.pass.start}–${c.pass.end}: ${invalid} Kontrollera rasttiderna.`);return;}
+      }
+      const signatures=new Set(state.shifts.map(shiftSignature));
+      const imported=[];
+      for(const c of selected) {
+        if(signatures.has(shiftSignature(c.pass)))continue;
+        const pass={...c.pass,id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random())};
+        state.shifts.push(pass);imported.push(pass);
+        signatures.add(shiftSignature(pass));
+      }
+      if(!imported.length){setImportError('Alla markerade pass finns redan registrerade, så inget lades till.');return;}
+      $('month').value=imported[0].date.slice(0,7);
+      save();render();
+      const message=`Klart! ${imported.length} arbetspass importerades. Kontrollera lönen och eventuella obetalda raster. ${selected.length-imported.length} dubbletter hoppades över.`;
+      clearImportPreview();
+      $('importSuccess').textContent=message;
+      $('importSuccess').hidden=false;
+    });
+
     render();
   </script>
 </body>
