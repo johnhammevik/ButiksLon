@@ -97,6 +97,61 @@
     .edit-break .fields {margin-top:12px}
     .import-table .break-tag {white-space:nowrap}
     @media(max-width:520px){.break-rules .rule-grid{grid-template-columns:1fr}.edit-btn,.delete{margin-top:3px}}
+
+    /* Månadskalender (version 4) */
+    .calendar-panel {padding:25px}
+    .calendar-header {display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;margin-bottom:11px}
+    .calendar-header h2 {margin-bottom:5px}
+    .calendar-header .sub {margin:0}
+    .calendar-navigation {display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+    .calendar-navigation button {min-width:43px;padding:9px 13px}
+    .calendar-month {font-size:17px;font-weight:800;min-width:150px;text-align:center;letter-spacing:-.2px;text-transform:capitalize}
+    .calendar-explain {color:var(--muted);font-size:13px;margin:12px 0}
+    .calendar-grid {display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px}
+    .calendar-weekday {text-align:center;font-size:12px;font-weight:800;color:#627885;padding:8px 3px}
+    .calendar-blank {border:1px solid transparent;min-width:0}
+    button.calendar-day {width:100%;min-width:0;height:101px;display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:6px;padding:10px;border:1px solid #d9e6e8;border-radius:12px;background:#f9fcfc;color:var(--ink);font-weight:500;position:relative;overflow:hidden}
+    button.calendar-day:hover {background:#ebf7f5;border-color:#71b8ae}
+    button.calendar-day:focus-visible {outline:3px solid #158b85;outline-offset:2px}
+    button.calendar-day.has-shift {background:#eaf6f2;border-color:#bedfd6}
+    button.calendar-day[aria-pressed="true"] {background:#087c78;border-color:#087c78;color:white;box-shadow:0 4px 11px rgba(8,124,120,.2)}
+    button.calendar-day.is-today:not([aria-pressed="true"]) .calendar-number {box-shadow:inset 0 0 0 2px #087c78}
+    .calendar-number {font-size:14px;font-weight:850;display:inline-grid;place-items:center;width:29px;height:29px;border-radius:9px;flex-shrink:0}
+    .calendar-day.has-shift .calendar-number {background:#c9ede2}
+    .calendar-day[aria-pressed="true"] .calendar-number {background:#d9fff3;color:#065952}
+    .calendar-day-sub {font-size:11px;line-height:1.24;color:#376a65;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .calendar-day[aria-pressed="true"] .calendar-day-sub {color:#e7fffb}
+    .calendar-day-pay {font-size:12px;font-weight:850;line-height:1.1;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+    .calendar-dot {display:none;width:7px;height:7px;background:#087c78;border-radius:50%;position:absolute;right:7px;top:10px}
+    .calendar-day[aria-pressed="true"] .calendar-dot {background:white}
+    .calendar-detail {background:#f2f8f8;border:1px solid #d5e7e6;border-radius:15px;padding:19px;margin-top:18px}
+    .calendar-detail-heading {display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+    .calendar-detail-heading h3 {font-size:18px;margin:0;letter-spacing:-.3px;text-transform:capitalize}
+    .calendar-mini-button {padding:9px 13px;font-size:13px}
+    .calendar-day-metrics {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:13px 0 17px}
+    .calendar-day-metrics div {background:white;border:1px solid #e0eaeb;padding:12px;border-radius:11px;min-width:0}
+    .calendar-day-metrics span {display:block;font-size:12px;color:var(--muted)}
+    .calendar-day-metrics strong {display:block;font-size:17px;letter-spacing:-.2px;margin-top:3px;overflow-wrap:anywhere}
+    .calendar-day-metrics .calendar-metric-total {background:#ddf5ec;border-color:#b0e6d3}
+    .calendar-shift-list {display:grid;gap:8px}
+    .calendar-shift-item {padding:12px;background:white;border:1px solid #dfeaea;border-radius:11px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .calendar-shift-item strong {display:block;font-size:14px}
+    .calendar-shift-item span {font-size:12px;color:var(--muted)}
+    .calendar-shift-item .edit-btn {white-space:nowrap}
+    .calendar-no-shift {color:var(--muted);font-size:14px;margin:4px 0}
+    @media(max-width:700px){
+      .calendar-panel {padding:17px}
+      .calendar-navigation {width:100%;justify-content:space-between}
+      .calendar-grid {gap:4px}
+      button.calendar-day {height:61px;border-radius:9px;padding:5px;align-items:center;justify-content:flex-start;gap:0}
+      .calendar-number {font-size:12px;width:26px;height:26px}
+      .calendar-day-sub,.calendar-day-pay {display:none}
+      button.calendar-day.has-shift .calendar-dot {display:block;top:auto;bottom:8px;right:auto;position:absolute}
+      .calendar-day-metrics {grid-template-columns:repeat(2,minmax(0,1fr))}
+      .calendar-day-metrics strong {font-size:16px}
+      .calendar-detail {padding:13px}
+    }
+    @media(max-width:355px){.calendar-month{min-width:110px;font-size:15px}.calendar-navigation button{min-width:35px;padding:8px}}
   </style>
 </head>
 <body>
@@ -112,6 +167,25 @@
       <div class="stat"><span>Grundlön</span><strong id="base">0 kr</strong></div>
       <div class="stat"><span>OB-tillägg</span><strong id="ob">0 kr</strong></div>
       <div class="stat highlight"><span>Bruttolön inkl. semesterersättning</span><strong id="gross">0 kr</strong></div>
+    </section>
+
+
+    <section class="panel calendar-panel" id="workCalendar" aria-labelledby="workCalendarTitle">
+      <div class="calendar-header">
+        <div>
+          <h2 id="workCalendarTitle">📅 Mitt arbetsschema</h2>
+          <p class="sub">Se dina Quinyx-pass, arbetade timmar och beräknad lön dag för dag.</p>
+        </div>
+        <div class="calendar-navigation" aria-label="Byt kalendermånad">
+          <button type="button" class="secondary" id="calPrevious" aria-label="Föregående månad">‹</button>
+          <span class="calendar-month" id="calendarMonthName" aria-live="polite"></span>
+          <button type="button" class="secondary" id="calNext" aria-label="Nästa månad">›</button>
+          <button type="button" class="secondary" id="calToday">Idag</button>
+        </div>
+      </div>
+      <p class="calendar-explain">Välj en dag för att se passen och lönen. Grönmarkerade dagar har arbetspass. Beloppen är före skatt och inkluderar inställd semesterersättning.</p>
+      <div id="calendarGrid" class="calendar-grid" aria-label="Månadskalender"></div>
+      <div class="calendar-detail" id="calendarDayDetails" aria-live="polite"></div>
     </section>
 
     <div class="layout">
@@ -247,7 +321,7 @@
       <p class="info">Pass sparas bara lokalt i den här webbläsaren. Exportera gärna en säkerhetskopia som CSV.</p>
     </section>
   </main>
-  <footer>ButiksLön version 3 – en fristående lönekalkylator, inte en officiell tjänst från Handels eller Skatteverket.</footer>
+  <footer>ButiksLön version 4 – en fristående lönekalkylator, inte en officiell tjänst från Handels eller Skatteverket.</footer>
 
   <script>
     'use strict';
@@ -257,7 +331,7 @@
     const localISODate = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const pad2 = (n) => String(n).padStart(2,'0');
     const number = (value) => Number(value);
-    const money = (n) => `${new Intl.NumberFormat('sv-SE',{maximumFractionDigits:2,minimumFractionDigits:0}).format(n)} kr`;
+    const money = (n) => `${new Intl.NumberFormat('sv-SE',{maximumFractionDigits:2,minimumFractionDigits:0}).format(Math.round((n + 1e-9)*100)/100)} kr`;
     const timeHours = (minutes) => `${new Intl.NumberFormat('sv-SE',{maximumFractionDigits:2}).format(minutes/60)} tim`;
     const monthOf = (date) => `${date.getFullYear()}-${pad2(date.getMonth()+1)}`;
     const hm = (value) => { const parts = value.split(':').map(Number); return parts[0]*60 + parts[1]; };
@@ -459,6 +533,154 @@
       if(!Number.isFinite(wage)||wage<0||wage>10000||!Number.isFinite(vacation)||vacation<0||vacation>100||!Number.isFinite(tax)||tax<0||tax>70)return null;
       return {wage,vacation,tax};
     }
+
+    // Månadskalender. Samma pass och löneinställningar som i version 3.
+    // Skift som passerar midnatt delas per faktiskt arbetad kalenderdag.
+    let calendarSelectedDate = localISODate(current);
+    const CALENDAR_WEEKDAYS = ['Mån','Tis','Ons','Tor','Fre','Lör','Sön'];
+    const calendarDateLabel = new Intl.DateTimeFormat('sv-SE', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    const calendarMonthLabel = new Intl.DateTimeFormat('sv-SE', {month:'long',year:'numeric'});
+    function calendarOb(parts) { return parts.ob50 + parts.ob70 + parts.ob100; }
+    function calendarGross(parts) { return (parts.base + calendarOb(parts)) * (1 + state.vacation / 100); }
+    function addCalendarMinute(parts, rate) {
+      parts.minutes++;
+      parts.base += state.wage / 60;
+      if (rate === .5) parts.ob50 += state.wage * .5 / 60;
+      if (rate === .7) parts.ob70 += state.wage * .7 / 60;
+      if (rate === 1) parts.ob100 += state.wage / 60;
+    }
+    function calculateCalendarDays(month) {
+      const y=Number(month.slice(0,4)), m=Number(month.slice(5,7));
+      const first=new Date(y,m-1,1), after=new Date(y,m,1);
+      const days=new Map();
+      for(const pass of state.shifts) {
+        const {start,end,bs,be}=bounds(pass);
+        if(end<=first || start>=after) continue;
+        const firstMinute=Math.max(start.getTime(),first.getTime());
+        const afterLastMinute=Math.min(end.getTime(),after.getTime());
+        for(let t=firstMinute; t<afterLastMinute; t+=60000) {
+          const day=localISODate(new Date(t));
+          if(!days.has(day)) days.set(day,{total:emptyTotals(),shifts:new Map()});
+          const entry=days.get(day);
+          if(!entry.shifts.has(pass)) entry.shifts.set(pass,emptyTotals());
+          if(bs && t>=bs.getTime() && t<be.getTime()) continue;
+          const rate=obRate(new Date(t));
+          addCalendarMinute(entry.total,rate);
+          addCalendarMinute(entry.shifts.get(pass),rate);
+        }
+      }
+      return days;
+    }
+    function renderCalendarDay(date,calendarDays) {
+      const box=$('calendarDayDetails');
+      box.replaceChildren();
+      const entry=calendarDays.get(date);
+      const parts=entry?entry.total:emptyTotals();
+      const heading=document.createElement('div');heading.className='calendar-detail-heading';
+      const dateTitle=document.createElement('h3');
+      dateTitle.textContent=calendarDateLabel.format(new Date(date+'T12:00:00'));
+      const add=document.createElement('button');add.type='button';add.className='primary calendar-mini-button';
+      add.textContent='+ Lägg till pass denna dag';
+      add.addEventListener('click',()=>{
+        $('date').value=date;
+        $('shiftForm').scrollIntoView({behavior:'smooth',block:'center'});
+        $('date').focus({preventScroll:true});
+      });
+      heading.append(dateTitle,add);box.append(heading);
+      const metrics=document.createElement('div');metrics.className='calendar-day-metrics';
+      for(const [name,value,isTotal] of [
+        ['Arbetad tid',timeHours(parts.minutes),false],
+        ['Grundlön',money(parts.base),false],
+        ['OB-tillägg',money(calendarOb(parts)),false],
+        ['Beräknad bruttolön',money(calendarGross(parts)),true]
+      ]) {
+        const item=document.createElement('div');
+        if(isTotal)item.className='calendar-metric-total';
+        const label=document.createElement('span');label.textContent=name;
+        const strong=document.createElement('strong');strong.textContent=value;
+        item.append(label,strong);metrics.append(item);
+      }
+      box.append(metrics);
+      if(!entry || entry.shifts.size===0) {
+        const empty=document.createElement('p');empty.className='calendar-no-shift';
+        empty.textContent='Inga registrerade arbetspass den här dagen.';
+        box.append(empty);return;
+      }
+      const items=document.createElement('div');items.className='calendar-shift-list';
+      for(const [pass,partial] of entry.shifts) {
+        const shift=document.createElement('div');shift.className='calendar-shift-item';
+        const summary=document.createElement('div');
+        const title=document.createElement('strong');title.textContent=`${pass.start}–${pass.end}`;
+        const desc=document.createElement('span');
+        const prev=pass.date!==date?' · Startade föregående dag':'';
+        const breakNote=pass.breakStart&&pass.breakEnd?` · Rast ${pass.breakStart}–${pass.breakEnd}${pass.breakSource==='auto'?' (förslag)':''}`:'';
+        desc.textContent=`${timeHours(partial.minutes)} denna dag · ${money(calendarGross(partial))}${prev}${breakNote}`;
+        summary.append(title,desc);shift.append(summary);
+        const edit=document.createElement('button');edit.type='button';edit.className='edit-btn';
+        edit.textContent='Redigera rast';
+        edit.setAttribute('aria-label',`Redigera rast för pass ${pass.date} ${pass.start}–${pass.end}`);
+        edit.addEventListener('click',()=>openBreakEditor(pass.id));
+        shift.append(edit);items.append(shift);
+      }
+      box.append(items);
+    }
+    function renderCalendar() {
+      const month=$('month').value;
+      if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return;
+      const y=Number(month.slice(0,4)),m=Number(month.slice(5,7));
+      const first=new Date(y,m-1,1),numDays=new Date(y,m,0).getDate();
+      const calendarDays=calculateCalendarDays(month);
+      if(!calendarSelectedDate.startsWith(month+'-')) {
+        const firstShift=Array.from(calendarDays.keys()).sort()[0];
+        calendarSelectedDate=month===monthOf(current)?localISODate(current):(firstShift||`${month}-01`);
+      }
+      $('calendarMonthName').textContent=calendarMonthLabel.format(first);
+      const grid=$('calendarGrid');grid.replaceChildren();
+      for(const wd of CALENDAR_WEEKDAYS) {
+        const label=document.createElement('div');label.className='calendar-weekday';label.textContent=wd;
+        grid.append(label);
+      }
+      const gap=(first.getDay()+6)%7;
+      const cells=Math.ceil((gap+numDays)/7)*7;
+      for(let i=0;i<cells;i++) {
+        const day=i-gap+1;
+        if(day<1 || day>numDays) {
+          const blank=document.createElement('div');blank.className='calendar-blank';blank.setAttribute('aria-hidden','true');grid.append(blank);continue;
+        }
+        const date=`${month}-${pad2(day)}`;
+        const entry=calendarDays.get(date);
+        const button=document.createElement('button');button.type='button';
+        button.className='calendar-day'+(entry?' has-shift':'')+(date===localISODate(current)?' is-today':'');
+        button.setAttribute('aria-pressed',String(calendarSelectedDate===date));
+        button.setAttribute('aria-label',`${calendarDateLabel.format(new Date(date+'T12:00:00'))}${entry?`, ${entry.shifts.size} pass, ${timeHours(entry.total.minutes)}, ${money(calendarGross(entry.total))}`:', inga arbetspass'}`);
+        const dayNo=document.createElement('span');dayNo.className='calendar-number';dayNo.textContent=String(day);
+        button.append(dayNo);
+        if(entry) {
+          const desc=document.createElement('span');desc.className='calendar-day-sub';
+          desc.textContent=`${entry.shifts.size} pass · ${timeHours(entry.total.minutes)}`;
+          const pay=document.createElement('span');pay.className='calendar-day-pay';pay.textContent=money(calendarGross(entry.total));
+          const dot=document.createElement('span');dot.className='calendar-dot';dot.setAttribute('aria-hidden','true');
+          button.append(desc,pay,dot);
+        }
+        button.addEventListener('click',()=>{calendarSelectedDate=date;renderCalendar();});
+        grid.append(button);
+      }
+      renderCalendarDay(calendarSelectedDate,calendarDays);
+    }
+    function changeCalendarMonth(offset) {
+      const month=$('month').value;
+      if(!/^\d{4}-\d{2}$/.test(month))return;
+      const first=new Date(Number(month.slice(0,4)),Number(month.slice(5,7))-1+offset,1);
+      $('month').value=monthOf(first);render();
+    }
+    $('calPrevious').addEventListener('click',()=>changeCalendarMonth(-1));
+    $('calNext').addEventListener('click',()=>changeCalendarMonth(1));
+    $('calToday').addEventListener('click',()=>{
+      $('month').value=monthOf(current);
+      calendarSelectedDate=localISODate(current);
+      render();
+    });
+
     function render(){
       const config=settings();
       if(!config)return;
@@ -476,6 +698,7 @@
       const gross=total.base+ob+vacation, tax=gross*state.tax/100, net=gross-tax;
       const fields={hours:timeHours(total.minutes),base:money(total.base),ob:money(ob),gross:money(gross),dHours:timeHours(total.minutes),dBase:money(total.base),dOb50:money(total.ob50),dOb70:money(total.ob70),dOb100:money(total.ob100),dVacation:money(vacation),dGross:money(gross),dTax:`−${money(tax)}`,dNet:money(net)};
       for(const [id,val] of Object.entries(fields))$(id).textContent=val;
+      renderCalendar();
       $('rows').replaceChildren();
       if(visible.length===0){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=5;td.className='empty';td.textContent='Inga arbetspass denna månad ännu. Lägg till ditt första pass!';tr.append(td);$('rows').append(tr);return;}
       visible.sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
@@ -502,7 +725,7 @@
       if(message){$('formError').textContent=message;$('formError').hidden=false;return;}
       if(!settings()){$('formError').textContent='Kontrollera timlön, semesterersättning och skatteprocent.';$('formError').hidden=false;return;}
       $('formError').hidden=true;
-      state.shifts.push(pass);$('month').value=pass.date.slice(0,7);save();render();
+      state.shifts.push(pass);$('month').value=pass.date.slice(0,7);calendarSelectedDate=pass.date;save();render();
       $('breakStart').value='';$('breakEnd').value='';
     });
     $('example').addEventListener('click',()=>{
@@ -760,6 +983,7 @@
       }
       if(!imported.length){setImportError('Alla markerade pass finns redan registrerade, så inget lades till.');return;}
       $('month').value=imported[0].date.slice(0,7);
+      calendarSelectedDate=imported[0].date;
       save();render();
       const countAuto=imported.filter(p=>p.breakSource==='auto').length;
       const message=`Klart! ${imported.length} arbetspass importerades, varav ${countAuto} med automatiskt föreslagen rast. Kontrollera alltid rastens längd och klockslag mot Quinyx. ${selected.length-imported.length} dubbletter hoppades över.`;
