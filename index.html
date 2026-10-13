@@ -81,6 +81,22 @@
     .import-actions{align-items:center}
     .import-note{color:#735018;font-size:13px;margin-top:12px}
     .success{color:#185d48;background:#e5f7ef;border:1px solid #b7e7cf;padding:11px 12px;border-radius:10px;font-size:14px;margin-top:12px}
+    /* Regler för rast och redigering av sparade pass */
+    .break-rules {background:#f1f9f8;border:1px solid #cce7e3;border-radius:14px;padding:16px;margin:16px 0}
+    .break-rules .rule-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+    .break-rules .rule-grid .rule-field {min-width:0}
+    .break-rules input[type="checkbox"] {width:18px;height:18px;accent-color:var(--teal);flex-shrink:0}
+    .checkbox-line {display:flex;gap:9px;align-items:start;font-size:14px;font-weight:700;margin:4px 0 10px}
+    .checkbox-line label {font-size:14px;margin:0}
+    .rule-explain {color:#3b6463;font-size:13px;line-height:1.55;margin-top:12px}
+    .break-tag {display:block;color:#7b5a22;font-size:11px;margin-top:4px;font-weight:700}
+    .edit-btn {padding:6px 11px;color:#096c71;background:#e8f5f2;border-radius:8px;margin-right:6px}
+    .edit-break {margin-top:19px;background:#f2f8f7;border:1px solid #c6e2dc;border-radius:14px;padding:18px}
+    .edit-break .buttons {margin-top:12px}
+    .edit-break strong {display:block;margin-bottom:8px}
+    .edit-break .fields {margin-top:12px}
+    .import-table .break-tag {white-space:nowrap}
+    @media(max-width:520px){.break-rules .rule-grid{grid-template-columns:1fr}.edit-btn,.delete{margin-top:3px}}
   </style>
 </head>
 <body>
@@ -128,8 +144,28 @@
           </form>
         </section>
 
+        <section class="panel" id="breakRulesSection">
+          <h2>3. Automatiska raster</h2>
+          <p class="sub">Ange rastreglerna på just din arbetsplats. Nya Quinyx-pass får då ett <strong>förslag</strong> på obetald rast, som du kan rätta före import.</p>
+          <div class="break-rules">
+            <div class="checkbox-line"><input type="checkbox" id="autoBreakEnabled"><label for="autoBreakEnabled">Föreslå raster automatiskt vid kalenderimport</label></div>
+            <div class="rule-grid">
+              <div class="rule-field"><label for="ruleShortUntil">Första gränsen: timmar</label><input id="ruleShortUntil" type="number" min="0.25" max="22" step="0.25" value="5" inputmode="decimal"><div class="hint">Pass kortare än denna gräns</div></div>
+              <div class="rule-field"><label for="ruleShortMinutes">Rast för korta pass (min)</label><input id="ruleShortMinutes" type="number" min="0" max="240" step="5" value="0" inputmode="numeric"></div>
+              <div class="rule-field"><label for="ruleLongFrom">Andra gränsen: timmar</label><input id="ruleLongFrom" type="number" min="0.5" max="24" step="0.25" value="7" inputmode="decimal"><div class="hint">Pass från denna gräns räknas som långa</div></div>
+              <div class="rule-field"><label for="ruleMediumMinutes">Rast mellan gränserna (min)</label><input id="ruleMediumMinutes" type="number" min="0" max="240" step="5" value="30" inputmode="numeric"></div>
+              <div class="rule-field"><label for="ruleLongMinutes">Rast för långa pass (min)</label><input id="ruleLongMinutes" type="number" min="0" max="240" step="5" value="45" inputmode="numeric"></div>
+            </div>
+            <div id="ruleExplanation" class="rule-explain" aria-live="polite"></div>
+            <div class="buttons"><button id="saveBreakRules" class="primary" type="button">Spara rastregler</button></div>
+            <div id="ruleError" class="error" role="alert" hidden></div>
+            <div id="ruleSuccess" class="success" role="status" hidden></div>
+          </div>
+          <p class="info"><strong>Observera:</strong> Exemplen 0 / 30 / 45 minuter är inte officiella Quinyx- eller Handelsregler. Rastens klockslag placeras som <strong>förslag mitt i passet</strong> och kan påverka OB. Kontrollera mot ditt faktiska schema. Redan sparade pass ändras inte automatiskt.</p>
+        </section>
+
         <section class="panel" id="calendarImport">
-          <h2>3. Importera schema från Quinyx</h2>
+          <h2>4. Importera schema från Quinyx</h2>
           <p class="sub">Läs in en kalenderfil (.ics) från ditt schema. Kontrollera passen innan de läggs till i din löneuträkning.</p>
           <div class="import-lead"><strong>🔒 Privat import</strong><br>Kalenderfilen läses endast på din enhet. Den laddas inte upp till GitHub, Quinyx eller vår server. Bara passen du godkänner sparas i din webbläsare.</div>
           <label for="icsFile">Välj din kalenderfil (.ics)</label>
@@ -137,10 +173,10 @@
           <p class="hint" id="icsHelp">Välj en hämtad .ics-fil, inte din privata Quinyx-kalenderlänk. Välj bara <strong>schemalagda skift</strong> när du skapar kalendern i Quinyx.</p>
           <div id="importSummary" class="import-summary" role="status" aria-live="polite" hidden></div>
           <div id="importPreview" hidden>
-            <p class="import-note"><strong>Viktigt:</strong> Kontrollera att varje rad verkligen är ett arbetspass. Fyll i rastens start och slut där du haft obetald rast. Kalendern anger inte alltid raster, och då blir lönen annars för hög.</p>
+            <p class="import-note"><strong>Viktigt:</strong> Föreslagna raster och deras klockslag är <em>uppskattningar</em>, inte Quinyx-bekräftade tider. Kontrollera om rasten är obetald och när den verkligen ligger, särskilt under OB-tid. Du kan ändra eller radera tiderna före import.</p>
             <div class="scroll">
               <table class="import-table" aria-label="Förhandsgranskning av kalenderpass">
-                <thead><tr><th class="check-cell">Välj</th><th>Datum</th><th>Tid</th><th>Kalenderpost</th><th>Rast från</th><th>Rast till</th></tr></thead>
+                <thead><tr><th class="check-cell">Välj</th><th>Datum</th><th>Tid</th><th>Kalenderpost</th><th>Rast från</th><th>Rast till</th><th>Rastkälla</th></tr></thead>
                 <tbody id="importRows"></tbody>
               </table>
             </div>
@@ -191,11 +227,27 @@
     <section class="panel">
       <div class="sectionhead"><h2>Dina registrerade arbetspass</h2><button class="secondary" type="button" id="export">Exportera alla pass som CSV</button></div>
       <div class="scroll"><table><thead><tr><th>Datum</th><th>Tid</th><th>Obetald rast</th><th>Arbetade timmar*</th><th>Åtgärd</th></tr></thead><tbody id="rows"></tbody></table></div>
+      <div id="editBreakPanel" class="edit-break" hidden>
+        <h2>Redigera rast för sparat pass</h2>
+        <strong id="editPassName"></strong>
+        <p class="sub">Justera enbart rasten. Passets datum och arbetstid är oförändrade.</p>
+        <div class="fields">
+          <div><label for="editBreakStart">Rast från</label><input id="editBreakStart" type="time"></div>
+          <div><label for="editBreakEnd">Rast till</label><input id="editBreakEnd" type="time"></div>
+        </div>
+        <div class="buttons">
+          <button id="suggestSavedBreak" type="button" class="secondary">Föreslå rast enligt mina regler</button>
+          <button id="saveEditedBreak" type="button" class="primary">Spara ändrad rast</button>
+          <button id="cancelEditedBreak" type="button" class="secondary">Avbryt</button>
+        </div>
+        <div id="editBreakError" class="error" role="alert" hidden></div>
+        <div id="editBreakInfo" class="info">Du kan lämna båda fälten tomma för att ta bort en rast.</div>
+      </div>
       <p class="info">*Timmar för ett helt pass, även om det passerar månadsskiftet. Månadssumman räknar endast minuter i vald månad.</p>
       <p class="info">Pass sparas bara lokalt i den här webbläsaren. Exportera gärna en säkerhetskopia som CSV.</p>
     </section>
   </main>
-  <footer>ButiksLön version 2 – en fristående lönekalkylator, inte en officiell tjänst från Handels eller Skatteverket.</footer>
+  <footer>ButiksLön version 3 – en fristående lönekalkylator, inte en officiell tjänst från Handels eller Skatteverket.</footer>
 
   <script>
     'use strict';
@@ -287,9 +339,27 @@
       }
       return results;
     }
+    const DEFAULT_BREAK_RULES = Object.freeze({enabled:false,shortUntil:5,longFrom:7,shortMinutes:0,mediumMinutes:30,longMinutes:45});
+    function verifiedBreakRules(value) {
+      if (!value || typeof value !== 'object') return {...DEFAULT_BREAK_RULES};
+      const candidate = {...DEFAULT_BREAK_RULES,...value};
+      const error = breakRulesError(candidate);
+      return error ? {...DEFAULT_BREAK_RULES} : candidate;
+    }
+    function breakRulesError(r) {
+      const values=[r.shortUntil,r.longFrom,r.shortMinutes,r.mediumMinutes,r.longMinutes];
+      if(values.some(v=>typeof v!=='number'||!Number.isFinite(v))) return 'Alla rastregler måste ha giltiga tal.';
+      if(r.shortUntil<0.25||r.longFrom>24||r.longFrom<=r.shortUntil||r.longFrom<0.5) return 'Andra timgränsen måste vara större än den första (max 24 timmar).';
+      if([r.shortMinutes,r.mediumMinutes,r.longMinutes].some(v=>v<0||v>240||!Number.isInteger(v))) return 'Rastlängden måste vara mellan 0 och 240 hela minuter.';
+      return '';
+    }
     function load(){
-      try { const saved=JSON.parse(localStorage.getItem(KEY)||'{}'); return {wage:saved.wage??170,vacation:saved.vacation??13,tax:saved.tax??30,shifts:Array.isArray(saved.shifts)?saved.shifts.filter(p=>p&&typeof p==='object'&&!validate(p)):[]}; }
-      catch {return {wage:170,vacation:13,tax:30,shifts:[]};}
+      try {
+        const saved=JSON.parse(localStorage.getItem(KEY)||'{}');
+        return {wage:saved.wage??170,vacation:saved.vacation??13,tax:saved.tax??30,
+          shifts:Array.isArray(saved.shifts)?saved.shifts.filter(p=>p&&typeof p==='object'&&!validate(p)):[],
+          breakRules:verifiedBreakRules(saved.breakRules)};
+      } catch {return {wage:170,vacation:13,tax:30,shifts:[],breakRules:{...DEFAULT_BREAK_RULES}};}
     }
     let state=load();
     $('wage').value=state.wage;
@@ -297,7 +367,93 @@
     $('tax').value=state.tax;
     $('month').value=monthOf(current);
     $('date').value=localISODate(current);
+    const RULE_FIELDS = ['shortUntil','longFrom','shortMinutes','mediumMinutes','longMinutes'];
+    function displayBreakRules() {
+      $('autoBreakEnabled').checked=state.breakRules.enabled;
+      for(const field of RULE_FIELDS) $('rule'+field[0].toUpperCase()+field.slice(1)).value=state.breakRules[field];
+      updateRuleExplanation();
+    }
+    function readBreakRules() {
+      const values={enabled:$('autoBreakEnabled').checked};
+      for(const field of RULE_FIELDS) {
+        const value=$('rule'+field[0].toUpperCase()+field.slice(1)).value.trim();
+        values[field]=value===''?NaN:Number(value);
+      }
+      return values;
+    }
+    function updateRuleExplanation(){
+      const r=readBreakRules();
+      const message=breakRulesError(r);
+      $('ruleExplanation').textContent=message ? 'Kontrollera timgränser och rastlängder.' :
+        `Under ${r.shortUntil} tim: ${r.shortMinutes} min · ${r.shortUntil} till under ${r.longFrom} tim: ${r.mediumMinutes} min · Från ${r.longFrom} tim: ${r.longMinutes} min.`;
+    }
+    displayBreakRules();
     const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){console.warn('Kunde inte spara lokalt.',e);}};
+    function timeOnly(date) {return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;}
+    function proposeBreak(pass,rules=state.breakRules) {
+      const {start,end}=bounds(pass),duration=Math.round((end-start)/60000);
+      const breakMinutes=duration<rules.shortUntil*60?rules.shortMinutes:(duration<rules.longFrom*60?rules.mediumMinutes:rules.longMinutes);
+      if (!breakMinutes || breakMinutes>=duration) return {breakStart:'',breakEnd:'',origin:'none',minutes:0};
+      // Endast ett FÖRSLAG: mitten på passet, avrundat nedåt till fem minuter.
+      const before=Math.floor(((duration-breakMinutes)/2)/5)*5;
+      const from=new Date(start.getTime()+before*60000);
+      const until=new Date(from.getTime()+breakMinutes*60000);
+      const proposal={...pass,breakStart:timeOnly(from),breakEnd:timeOnly(until)};
+      if(validate(proposal)) return {breakStart:'',breakEnd:'',origin:'none',minutes:0};
+      return {breakStart:proposal.breakStart,breakEnd:proposal.breakEnd,origin:'auto',minutes:breakMinutes};
+    }
+    function suggestForCandidate(candidate){
+      if(candidate.breakOrigin==='file'||candidate.breakOrigin==='manual') return;
+      const suggestion=state.breakRules.enabled?proposeBreak(candidate.pass):{breakStart:'',breakEnd:'',origin:'none'};
+      candidate.pass.breakStart=suggestion.breakStart;
+      candidate.pass.breakEnd=suggestion.breakEnd;
+      candidate.breakOrigin=suggestion.origin;
+    }
+    let editedShiftId=null;
+    function openBreakEditor(id) {
+      const pass=state.shifts.find(p=>p.id===id); if(!pass) return;
+      editedShiftId=id;
+      $('editPassName').textContent=`${pass.date} · ${pass.start}–${pass.end}`;
+      $('editBreakStart').value=pass.breakStart||'';
+      $('editBreakEnd').value=pass.breakEnd||'';
+      $('editBreakError').hidden=true;
+      $('editBreakPanel').hidden=false;
+      $('editBreakPanel').scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+    function closeBreakEditor(){
+      editedShiftId=null; $('editBreakPanel').hidden=true; $('editBreakError').hidden=true;
+    }
+    $('cancelEditedBreak').addEventListener('click',closeBreakEditor);
+    $('suggestSavedBreak').addEventListener('click',()=>{
+      const pass=state.shifts.find(p=>p.id===editedShiftId); if(!pass) return;
+      const suggestion=proposeBreak(pass);
+      $('editBreakStart').value=suggestion.breakStart;
+      $('editBreakEnd').value=suggestion.breakEnd;
+      $('editBreakError').hidden=true;
+      $('editBreakInfo').textContent=suggestion.minutes?
+        `Föreslagen obetald rast: ${suggestion.minutes} minuter mitt i passet. Kontrollera klockslagen innan du sparar.`:
+        'Ingen rast enligt de aktuella reglerna. Kontrollera att detta stämmer.';
+    });
+    $('saveEditedBreak').addEventListener('click',()=>{
+      const idx=state.shifts.findIndex(p=>p.id===editedShiftId); if(idx<0)return;
+      const updated={...state.shifts[idx],breakStart:$('editBreakStart').value,breakEnd:$('editBreakEnd').value,breakSource:'manual'};
+      const issue=validate(updated);
+      if(issue){$('editBreakError').textContent=issue;$('editBreakError').hidden=false;return;}
+      state.shifts[idx]=updated;save();closeBreakEditor();render();
+    });
+    for(const id of ['autoBreakEnabled',...RULE_FIELDS.map(f=>'rule'+f[0].toUpperCase()+f.slice(1))]){
+      $(id).addEventListener('input',()=>{$('ruleSuccess').hidden=true;updateRuleExplanation();});
+    }
+    $('saveBreakRules').addEventListener('click',()=>{
+      $('ruleError').hidden=true; $('ruleSuccess').hidden=true;
+      const rules=readBreakRules(),issue=breakRulesError(rules);
+      if(issue){$('ruleError').textContent=issue;$('ruleError').hidden=false;return;}
+      state.breakRules=rules;save();
+      $('ruleSuccess').textContent=rules.enabled?'Rastreglerna har sparats och är aktiva för nya kalenderimporter.':'Rastreglerna har sparats. Aktivera kryssrutan om du vill använda dem vid import.';
+      $('ruleSuccess').hidden=false;
+      for (const candidate of calendarCandidates) suggestForCandidate(candidate);
+      if(calendarCandidates.length) renderCalendarRows();
+    });
     function settings(){
       const wage=number($('wage').value),vacation=number($('vacation').value),tax=number($('tax').value);
       if(!Number.isFinite(wage)||wage<0||wage>10000||!Number.isFinite(vacation)||vacation<0||vacation>100||!Number.isFinite(tax)||tax<0||tax>70)return null;
@@ -328,10 +484,14 @@
         const {start,end,bs,be}=bounds(pass);
         const duration=Math.round((end-start-(bs?be-bs:0))/60000);
         const prettyDate=new Intl.DateTimeFormat('sv-SE',{day:'numeric',month:'short',year:'numeric'}).format(start);
-        const vals=[prettyDate,`${pass.start}–${pass.end}`,bs?`${pass.breakStart}–${pass.breakEnd}`:'Ingen',timeHours(duration)];
+        const breakLabel=bs?`${pass.breakStart}–${pass.breakEnd}${pass.breakSource==='auto'?' (förslag)':''}`:'Ingen';
+        const vals=[prettyDate,`${pass.start}–${pass.end}`,breakLabel,timeHours(duration)];
         for(const val of vals){const td=document.createElement('td');td.textContent=val;tr.append(td);}
-        const cell=document.createElement('td'),btn=document.createElement('button');btn.type='button';btn.className='delete';btn.textContent='Ta bort';btn.setAttribute('aria-label',`Ta bort pass ${prettyDate} ${pass.start}–${pass.end}`);
-        btn.addEventListener('click',()=>{state.shifts=state.shifts.filter(p=>p.id!==pass.id);save();render();});cell.append(btn);tr.append(cell);$('rows').append(tr);
+        const cell=document.createElement('td');
+        const edit=document.createElement('button');edit.type='button';edit.className='edit-btn';edit.textContent='Redigera rast';edit.setAttribute('aria-label',`Redigera rast ${prettyDate} ${pass.start}–${pass.end}`);
+        edit.addEventListener('click',()=>openBreakEditor(pass.id));cell.append(edit);
+        const btn=document.createElement('button');btn.type='button';btn.className='delete';btn.textContent='Ta bort';btn.setAttribute('aria-label',`Ta bort pass ${prettyDate} ${pass.start}–${pass.end}`);
+        btn.addEventListener('click',()=>{state.shifts=state.shifts.filter(p=>p.id!==pass.id);if(editedShiftId===pass.id)closeBreakEditor();save();render();});cell.append(btn);tr.append(cell);$('rows').append(tr);
       }
     }
     for (const id of ['wage','vacation','tax','month'])$(id).addEventListener('input',render);
@@ -432,6 +592,16 @@
         return lines;
       },[]);
     }
+    function explicitUnpaidBreakInCalendar(event,pass) {
+      // Endast explicit obetald rast. Andra benämningar kan gälla betald tid.
+      const description=(event.DESCRIPTION?.value||'').replace(/\\[nN]/g,'\n');
+      const matches=[...description.matchAll(/(?:obetald\s+rast|unpaid\s+break)\s*[:=]?\s*(\d{1,2}):(\d{2})\s*(?:-|–|—|till|to)\s*(\d{1,2}):(\d{2})/gi)];
+      if(matches.length!==1) return null;
+      const m=matches[0];
+      if(+m[1]>23||+m[2]>59||+m[3]>23||+m[4]>59)return null;
+      const candidate={...pass,breakStart:`${pad2(+m[1])}:${m[2]}`,breakEnd:`${pad2(+m[3])}:${m[4]}`};
+      return validate(candidate)?null:{breakStart:candidate.breakStart,breakEnd:candidate.breakEnd};
+    }
     function parseCalendarFile(text) {
       const lines = unfoldICS(text);
       if (!lines.some(x=>/^BEGIN:VCALENDAR\s*$/i.test(x))) throw new Error('Filen är inte en giltig iCalendar-fil (.ics).');
@@ -472,7 +642,11 @@
           found.add(signature);
           const title=(raw.SUMMARY?.value||'Schemapass').replace(/\\[,;nN]/g,x=>x.toLowerCase()==='\\n'?' ':x.slice(1)).slice(0,120);
           const likelyNotShift=/(frånvaro|semester|sjuk|ledighet|ledigt|absence|vacation|sick|time off|day off|unassigned|ledig\s+dag)/i.test(title);
-          result.push({pass,title,selected:!likelyNotShift,possiblyNotShift:likelyNotShift});
+          const fromFile = explicitUnpaidBreakInCalendar(raw,pass);
+          const candidate={pass,title,selected:!likelyNotShift,possiblyNotShift:likelyNotShift,breakOrigin:fromFile?'file':'none'};
+          if(fromFile) {candidate.pass.breakStart=fromFile.breakStart;candidate.pass.breakEnd=fromFile.breakEnd;}
+          else suggestForCandidate(candidate);
+          result.push(candidate);
         } catch (err) {
           if(/Heldagshändelser/.test(err.message)) skipped.allDay++;
           else skipped.unsupported++;
@@ -510,6 +684,11 @@
       const description=document.createElement('span');
       description.textContent=`Överhoppade: ${skip.duplicates} dubbletter, ${skip.cancelled} avbokade, ${skip.allDay} heldagar, ${skip.recurring} återkommande regler och ${skip.unsupported} med okänt format/ogiltiga tider.`;
       $('importSummary').append(heading,description);
+      renderCalendarRows();
+      $('importPreview').hidden=calendarCandidates.length===0;
+      if(!calendarCandidates.length) setImportError('Inga nya pass kunde läsas. Se sammanfattningen ovan. Kontrollera att kalendern innehåller schemalagda skift med start- och sluttider.');
+    }
+    function renderCalendarRows(){
       $('importRows').replaceChildren();
       for(const [i,candidate] of calendarCandidates.entries()){
         const tr=document.createElement('tr');
@@ -527,14 +706,17 @@
         for(const [cell,key,name] of [[breakStartCell,'breakStart','Rast från'],[breakEndCell,'breakEnd','Rast till']]){
           const field=document.createElement('input');field.type='time';field.value=candidate.pass[key];
           field.setAttribute('aria-label',`${name} för ${candidate.pass.date} ${candidate.pass.start}`);
-          field.addEventListener('change',()=>{candidate.pass[key]=field.value;hideImportMessages();});
+          field.addEventListener('change',()=>{candidate.pass[key]=field.value;candidate.breakOrigin='manual';hideImportMessages();
+            const source=tr.querySelector('[data-break-source]');if(source)source.textContent='Ändrad av dig';});
           cell.append(field);
         }
-        tr.append(choose,dateCell,timeCell,titleCell,breakStartCell,breakEndCell);
+        const sourceCell=document.createElement('td');
+        sourceCell.dataset.breakSource='';
+        sourceCell.textContent={auto:'Automatiskt förslag',file:'Uppgift i kalenderfil',manual:'Ändrad av dig',none:'Ingen föreslagen'}[candidate.breakOrigin]||'Okänt';
+        if(candidate.breakOrigin==='auto')sourceCell.className='break-tag';
+        tr.append(choose,dateCell,timeCell,titleCell,breakStartCell,breakEndCell,sourceCell);
         $('importRows').append(tr);
       }
-      $('importPreview').hidden=calendarCandidates.length===0;
-      if(!calendarCandidates.length) setImportError('Inga nya pass kunde läsas. Se sammanfattningen ovan. Kontrollera att kalendern innehåller schemalagda skift med start- och sluttider.');
     }
     $('icsFile').addEventListener('change', async () => {
       hideImportMessages();
@@ -572,14 +754,15 @@
       const imported=[];
       for(const c of selected) {
         if(signatures.has(shiftSignature(c.pass)))continue;
-        const pass={...c.pass,id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random())};
+        const pass={...c.pass,id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random()),breakSource:c.breakOrigin};
         state.shifts.push(pass);imported.push(pass);
         signatures.add(shiftSignature(pass));
       }
       if(!imported.length){setImportError('Alla markerade pass finns redan registrerade, så inget lades till.');return;}
       $('month').value=imported[0].date.slice(0,7);
       save();render();
-      const message=`Klart! ${imported.length} arbetspass importerades. Kontrollera lönen och eventuella obetalda raster. ${selected.length-imported.length} dubbletter hoppades över.`;
+      const countAuto=imported.filter(p=>p.breakSource==='auto').length;
+      const message=`Klart! ${imported.length} arbetspass importerades, varav ${countAuto} med automatiskt föreslagen rast. Kontrollera alltid rastens längd och klockslag mot Quinyx. ${selected.length-imported.length} dubbletter hoppades över.`;
       clearImportPreview();
       $('importSuccess').textContent=message;
       $('importSuccess').hidden=false;
