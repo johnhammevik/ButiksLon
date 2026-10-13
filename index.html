@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#12293c">
   <meta name="description" content="En enkel löneräknare för dig som är timanställd i butik.">
-  <title>ButiksLön – räkna ut din lön</title>
+  <title>ButiksLön 5.0 – kalender, lön och schemahistorik</title>
   <style>
     :root { color-scheme: light; --ink:#183044; --muted:#657788; --bg:#f3f7f8; --line:#d9e4e8; --teal:#087c78; --teal-dark:#05635f; --navy:#12293c; --white:#fff; --shadow:0 12px 36px rgba(19,48,63,.08); }
     * {box-sizing:border-box}
@@ -152,6 +152,27 @@
       .calendar-detail {padding:13px}
     }
     @media(max-width:355px){.calendar-month{min-width:110px;font-size:15px}.calendar-navigation button{min-width:35px;padding:8px}}
+
+    /* ButiksLön 5.0: synkronisering och schemahistorik */
+    .sync-panel{border-color:#b5dcd7}
+    .sync-bar{background:#e8f6f3;border:1px solid #cce7e2;border-radius:12px;padding:14px;margin:12px 0;font-size:14px}
+    .sync-panel code{font-size:12px;overflow-wrap:anywhere}
+    .sync-stack{display:grid;gap:12px;margin:14px 0}
+    .sync-actions{display:flex;gap:9px;flex-wrap:wrap}
+    .sync-actions button{flex:1;min-width:145px}
+    .sync-warning{font-size:13px;color:#75541d;margin:13px 0}
+    .sync-changes,.history-view{margin:15px 0;border:1px solid var(--line);border-radius:12px;padding:14px;background:#fafdfd}
+    .sync-change{padding:10px 0;border-top:1px solid var(--line);font-size:13px;overflow-wrap:anywhere}
+    .sync-change:first-child{border-top:0}
+    .sync-change strong{display:block}
+    .sync-change small{color:var(--muted)}
+    .history-view{max-height:340px;overflow-y:auto}
+    .history-row{padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+    .history-row:first-child{border-top:0}
+    .privacy-check{display:flex;gap:9px;align-items:flex-start;font-size:13px}
+    .privacy-check input{width:17px;height:17px;flex-shrink:0;margin-top:2px}
+    .sync-indicator{font-size:13px;color:#355d5a;margin:12px 0}
+    @media(max-width:520px){.sync-panel .fields{grid-template-columns:1fr}.sync-actions button{min-width:100%}}
   </style>
 </head>
 <body>
@@ -186,6 +207,42 @@
       <p class="calendar-explain">Välj en dag för att se passen och lönen. Grönmarkerade dagar har arbetspass. Beloppen är före skatt och inkluderar inställd semesterersättning.</p>
       <div id="calendarGrid" class="calendar-grid" aria-label="Månadskalender"></div>
       <div class="calendar-detail" id="calendarDayDetails" aria-live="polite"></div>
+    </section>
+
+
+    <section class="panel sync-panel" id="quinyxSync" aria-labelledby="quinyxSyncHeading">
+      <h2 id="quinyxSyncHeading">🔄 5. Quinyx-synkronisering och historik</h2>
+      <p class="sub">Hämta ändringar automatiskt när ButiksLön är öppen, eller när du öppnar sidan igen. Du godkänner förändringar innan löneberäkningen ändras. Gamla schemaversioner sparas på din enhet.</p>
+      <div class="sync-bar"><strong>🔐 Skyddad koppling</strong><br>För automatisk hämtning behöver du en egen kostnadsfri Cloudflare Worker. Din privata Quinyx-kalenderlänk ska bara ligga som hemlighet i Worker-inställningarna – aldrig här eller i GitHub-koden. Instruktioner finns i medföljande guide.</div>
+      <div class="fields">
+        <div class="field full"><label for="syncEndpoint">Din Worker-adress (https://…workers.dev/)</label><input id="syncEndpoint" type="url" placeholder="https://butikslon-dittnamn.dinprofil.workers.dev" autocomplete="off" spellcheck="false"></div>
+        <div class="field full"><label for="syncToken">Din privata åtkomstnyckel (ACCESS_TOKEN)</label><input id="syncToken" type="password" placeholder="Klistra in nyckeln du valde i Cloudflare" autocomplete="off" spellcheck="false"></div>
+      </div>
+      <div class="sync-stack">
+        <label class="privacy-check"><input id="syncRememberToken" type="checkbox"><span>Kom ihåg nyckeln på den här enheten så att synk kan starta vid nästa besök. <strong>Välj bara på din egen enhet.</strong> Annars sparas nyckeln bara under webbläsarsessionen.</span></label>
+      </div>
+      <div class="sync-actions">
+        <button type="button" class="primary" id="syncConnect">Spara och synkronisera</button>
+        <button type="button" class="secondary" id="syncNow">Hämta ändringar nu</button>
+        <button type="button" class="secondary" id="syncDisconnect">Koppla från</button>
+      </div>
+      <div class="sync-indicator" id="syncStatus" role="status" aria-live="polite">Ingen synkronisering ansluten ännu.</div>
+      <div id="syncError" class="error" role="alert" hidden></div>
+      <div id="syncChanges" class="sync-changes" hidden></div>
+      <div class="sync-actions" id="syncApplyActions" hidden>
+        <button type="button" class="primary" id="syncApply">Godkänn nya och ändrade pass</button>
+      </div>
+      <p class="sync-warning">Passen som försvinner ur Quinyx tas <strong>inte</strong> bort från löneuträkningen automatiskt. Du ser ändringen i historiken och bestämmer själv om passet ska tas bort. Automatiskt föreslagna raster är fortfarande uppskattningar.</p>
+      <h3>📚 Sparade schemaversioner</h3>
+      <p class="sub">Historiken bevarar upp till 30 olika schemaversioner i den här webbläsaren. Välj en version för att se vad som ändrats sedan föregående sparade version.</p>
+      <div class="field"><label for="historySelect">Välj sparad version</label><select id="historySelect" style="width:100%;padding:12px;border:1px solid #c5d6da;border-radius:10px;background:white"></select></div>
+      <div id="historyDetails" class="history-view" role="region" aria-label="Sparad schemaversion" aria-live="polite"></div>
+      <div class="sync-actions">
+        <button type="button" class="secondary" id="downloadBackup">Ladda ner säkerhetskopia (JSON)</button>
+        <button type="button" class="secondary" id="restoreBackup">Återställ från säkerhetskopia</button>
+      </div>
+      <input type="file" accept=".json,application/json" id="restoreBackupFile" hidden>
+      <p class="info">Kopia och historik lagras <strong>endast i din webbläsare</strong> och kan försvinna om webbläsardata raderas. Ladda ner en JSON-säkerhetskopia regelbundet. Automatisk kontroll sker ungefär var 30:e minut <em>när sidan är öppen</em>, inte när den är stängd. Ingen löneinformation publiceras på GitHub.</p>
     </section>
 
     <div class="layout">
@@ -262,7 +319,7 @@
           </div>
           <div id="importError" class="error" role="alert" hidden></div>
           <div id="importSuccess" class="success" role="status" hidden></div>
-          <p class="info">Stödjer enstaka kalenderpass med angivna start- och sluttider. Återkommande kalenderregler och heldagshändelser hoppas över. Importen uppdateras inte automatiskt när schemat ändras i Quinyx.</p>
+          <p class="info">Stödjer enstaka kalenderpass med angivna start- och sluttider. Återkommande kalenderregler och heldagshändelser hoppas över. För synkronisering via din skyddade Worker använder du avsnitt 5 ovan.</p>
         </section>
       </div>
 
@@ -990,6 +1047,280 @@
       clearImportPreview();
       $('importSuccess').textContent=message;
       $('importSuccess').hidden=false;
+    });
+
+
+    // V5: Fristående historik – den gamla v1-nyckeln med löner och pass lämnas orörd.
+    const SYNC_CONFIG_KEY='butikslon-v5-sync-config';
+    const SYNC_HISTORY_KEY='butikslon-v5-history';
+    const SYNC_TOKEN_KEY='butikslon-v5-access-token';
+    const MAX_HISTORY=30;
+    const MAX_SYNC_BYTES=2*1024*1024;
+    const MAX_BACKUP_BYTES=4*1024*1024;
+    let syncBusy=false;
+    let pendingFeed=null;
+    let latestFileText=null;
+    let syncConfig={endpoint:'',remember:false,lastCheck:''};
+    let syncHistory=[];
+    function initSync(){
+      try {syncConfig={...syncConfig,...JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY)||'{}')};}catch{}
+      try {const data=JSON.parse(localStorage.getItem(SYNC_HISTORY_KEY)||'[]');syncHistory=Array.isArray(data)?data.slice(0,MAX_HISTORY):[];}catch{}
+      $('syncEndpoint').value=syncConfig.endpoint||'';
+      $('syncRememberToken').checked=Boolean(syncConfig.remember);
+      try {$('syncToken').value=(syncConfig.remember?localStorage:sessionStorage).getItem(SYNC_TOKEN_KEY)||'';}catch{}
+      renderHistory();
+      if(syncConfig.endpoint&&$('syncToken').value){
+        $('syncStatus').textContent='Synkronisering är inställd. Kontrollerar uppdateringar…';
+        setTimeout(()=>fetchQuinyx(false),400);
+      }
+    }
+    function storeSyncConfig(){
+      localStorage.setItem(SYNC_CONFIG_KEY,JSON.stringify(syncConfig));
+      const token=$('syncToken').value.trim();
+      if(syncConfig.remember){localStorage.setItem(SYNC_TOKEN_KEY,token);sessionStorage.removeItem(SYNC_TOKEN_KEY);}
+      else {sessionStorage.setItem(SYNC_TOKEN_KEY,token);localStorage.removeItem(SYNC_TOKEN_KEY);}
+    }
+    function syncError(message){$('syncError').textContent=message;$('syncError').hidden=false;}
+    function validWorkerUrl(text){
+      try {const u=new URL(text);
+        // Begränsa till Workers-adresser så nyckeln inte skickas till en godtycklig webbplats.
+        return u.protocol==='https:'&&u.hostname.endsWith('.workers.dev')&&u.hostname!=='.workers.dev'&&!u.username&&!u.password&&!u.search&&!u.hash;
+      }catch {return false;}
+    }
+    function parseFeed(text){
+      if(text.length>MAX_SYNC_BYTES)throw new Error('Kalendern är för stor (max 2 MB).');
+      const lines=unfoldICS(text);
+      if(!lines.some(x=>/^BEGIN:VCALENDAR\s*$/i.test(x)))throw new Error('Svaret är inte en giltig .ics-kalender.');
+      const events=[];let raw=null,total=0,skipped=0;
+      for(const line of lines){
+        if(/^BEGIN:VEVENT\s*$/i.test(line)){raw={};continue;}
+        if(/^END:VEVENT\s*$/i.test(line)){
+          if(!raw)continue;total++;if(total>MAX_ICS_EVENTS)throw new Error('Kalendern innehåller för många pass (max 600).');
+          if(raw.RRULE||raw.RDATE){skipped++;raw=null;continue;}
+          const title=(raw.SUMMARY?.value||'Schemapass').replace(/\[nN]/g,' ').slice(0,120);
+          if(/(frånvaro|semester|sjuk|ledighet|ledigt|absence|vacation|sick|time off|day off|unassigned|ledig\s+dag)/i.test(title)){skipped++;raw=null;continue;}
+          try {
+            const begin=parseCalendarTime(raw.DTSTART),finish=parseCalendarTime(raw.DTEND);
+            const pass={date:begin.date,start:begin.time,end:finish.time,breakStart:'',breakEnd:''};
+            if(validate(pass))throw new Error('Ogiltig tid');
+            const uid=(raw.UID?.value||'').trim().slice(0,250);
+            const recurrence=(raw['RECURRENCE-ID']?.value||'').trim().slice(0,40);
+            const key=uid?`uid:${uid}${recurrence?'|'+recurrence:''}`:`tid:${shiftSignature(pass)}`;
+            const explicitBreak=explicitUnpaidBreakInCalendar(raw,pass);
+            events.push({...pass,key,title,cancelled:(raw.STATUS?.value||'').toUpperCase()==='CANCELLED',
+              ...(explicitBreak?{breakStart:explicitBreak.breakStart,breakEnd:explicitBreak.breakEnd,breakSource:'file'}:{})});
+          }catch{skipped++;}
+          raw=null;continue;
+        }
+        if(raw){const sep=line.indexOf(':');if(sep>0){const left=line.slice(0,sep);const name=left.split(';')[0].toUpperCase();if(!raw[name])raw[name]={left,value:line.slice(sep+1)};}}
+      }
+      // Samma UID kan förekomma flera gånger om kalenderexporten har dubbletter.
+      const unique=new Map();for(const e of events)unique.set(e.key,e);
+      return {events:[...unique.values()].filter(e=>!e.cancelled).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)),total,skipped,cancelled:events.filter(e=>e.cancelled).length};
+    }
+    function sameEvent(a,b){return a.date===b.date&&a.start===b.start&&a.end===b.end&&a.breakStart===b.breakStart&&a.breakEnd===b.breakEnd;}
+    function compareVersions(previous,current){
+      const oldMap=new Map((previous?.events||[]).map(e=>[e.key,e]));
+      const newMap=new Map((current?.events||[]).map(e=>[e.key,e]));
+      const additions=[],changes=[],removals=[];
+      for(const e of current.events){const old=oldMap.get(e.key);if(!old)additions.push(e);else if(!sameEvent(e,old))changes.push({before:old,after:e});}
+      for(const e of previous?.events||[])if(!newMap.has(e.key))removals.push(e);
+      return {additions,changes,removals};
+    }
+    function makeHistoryEntry(feed,source){return {id:crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random(),
+      date:new Date().toISOString(),source,events:feed.events};}
+    function archiveFeed(feed,source){
+      if(!feed.events.length)throw new Error('Kalendern saknar giltiga arbetspass. Ingenting sparades för att skydda din historik.');
+      const prev=syncHistory.find(h=>h.source===source);
+      const item=makeHistoryEntry(feed,source);
+      const diff=compareVersions(prev,item);
+      if(prev&&!diff.additions.length&&!diff.changes.length&&!diff.removals.length)return {item:prev,diff,newVersion:false};
+      const updated=[item,...syncHistory].slice(0,MAX_HISTORY);
+      try{localStorage.setItem(SYNC_HISTORY_KEY,JSON.stringify(updated));}
+      catch{throw new Error('Enhetens lagringsutrymme är fullt. Ladda ner en säkerhetskopia och frigör utrymme innan ny synk.');}
+      syncHistory=updated;renderHistory(true);return {item,diff,newVersion:true};
+    }
+    function addHistoryMessage(container,strong,description){
+      const row=document.createElement('div');row.className='sync-change';
+      const b=document.createElement('strong');b.textContent=strong;
+      const s=document.createElement('small');s.textContent=description;
+      row.append(b,s);container.append(row);
+    }
+    function passText(e){return `${e.date} ${e.start}–${e.end}${e.breakStart?`, rast ${e.breakStart}–${e.breakEnd}`:''}`;}
+    function presentChanges(target,diff,subtitle){
+      target.replaceChildren();const title=document.createElement('strong');
+      title.textContent=`${subtitle}: ${diff.additions.length} nya, ${diff.changes.length} ändrade och ${diff.removals.length} borttagna pass.`;
+      target.append(title);
+      const all=[...diff.additions.map(e=>['Nytt pass',passText(e)]),
+        ...diff.changes.map(c=>['Ändrat pass',`${passText(c.before)} → ${passText(c.after)}`]),
+        ...diff.removals.map(e=>['Saknas nu i kalendern',passText(e)])];
+      if(!all.length)addHistoryMessage(target,'Inga schemaändringar','Alla arbetstider är oförändrade sedan föregående version.');
+      else for(const [a,b] of all.slice(0,60))addHistoryMessage(target,a,b);
+      if(all.length>60)addHistoryMessage(target,'Fler ändringar',`${all.length-60} ändringar visas inte här. Ladda ner en säkerhetskopia för hela historiken.`);
+    }
+    function renderHistory(preferNewest=false){
+      const select=$('historySelect');const selected=preferNewest?'':select.value;select.replaceChildren();
+      if(!syncHistory.length){const o=document.createElement('option');o.value='';o.textContent='Ingen historik sparad ännu';select.append(o);$('historyDetails').textContent='När du har synkroniserat eller godkänt en kalenderfil sparas den första schemaversionen här.';return;}
+      for(const h of syncHistory){const o=document.createElement('option');o.value=h.id;
+        o.textContent=`${new Date(h.date).toLocaleString('sv-SE')} – ${h.source} (${h.events.length} pass)`;select.append(o);}
+      if(syncHistory.some(h=>h.id===selected))select.value=selected;
+      showHistorySelected();
+    }
+    function showHistorySelected(){
+      const h=syncHistory.find(x=>x.id===$('historySelect').value),target=$('historyDetails');
+      if(!h){target.textContent='Ingen schemaversion vald.';return;}
+      const idx=syncHistory.findIndex(x=>x.id===h.id);
+      const prior=syncHistory.slice(idx+1).find(x=>x.source===h.source);
+      const diff=compareVersions(prior,h);
+      presentChanges(target,diff,prior?'Skillnad mot föregående sparade version':'Första sparade versionen');
+      const details=document.createElement('details');details.style.marginTop='13px';
+      const summary=document.createElement('summary');summary.textContent=`Visa alla ${h.events.length} pass i den här versionen`;details.append(summary);
+      for(const e of h.events){const line=document.createElement('div');line.className='history-row';line.textContent=passText(e);details.append(line);}
+      target.append(details);
+    }
+    $('historySelect').addEventListener('change',showHistorySelected);
+    function showPending(feed,diff){
+      pendingFeed=feed;
+      $('syncChanges').hidden=false;presentChanges($('syncChanges'),diff,'Senaste synk');
+      $('syncApplyActions').hidden=false;
+      $('syncApply').disabled=false;
+    }
+    async function fetchQuinyx(manual){
+      if(syncBusy)return;
+      const endpoint=syncConfig.endpoint,token=$('syncToken').value.trim();
+      if(!validWorkerUrl(endpoint)){if(manual)syncError('Ange din https-adress som slutar på .workers.dev. Klistra aldrig in din Quinyx-länk här.');return;}
+      if(token.length<24){if(manual)syncError('Ange den privata åtkomstnyckeln som du lade in som ACCESS_TOKEN i Cloudflare.');return;}
+      syncBusy=true;$('syncError').hidden=true;$('syncStatus').textContent='Kontrollerar Quinyx-schemat…';
+      $('syncNow').disabled=true;$('syncConnect').disabled=true;
+      try{
+        const abort=new AbortController();const timer=setTimeout(()=>abort.abort(),20000);
+        let response;
+        try{response=await fetch(endpoint,{method:'GET',headers:{Authorization:'Bearer '+token,Accept:'text/calendar'},cache:'no-store',signal:abort.signal});}
+        finally{clearTimeout(timer);}
+        if(!response.ok)throw new Error(response.status===401?'Åtkomstnyckeln stämmer inte. Kontrollera ACCESS_TOKEN.':`Kunde inte nå din Worker (HTTP ${response.status}).`);
+        const blob=await response.blob();if(blob.size>MAX_SYNC_BYTES)throw new Error('Quinyx-kalendern är för stor.');
+        const feed=parseFeed(await blob.text());
+        const result=archiveFeed(feed,'Quinyx');
+        syncConfig.lastCheck=new Date().toISOString();localStorage.setItem(SYNC_CONFIG_KEY,JSON.stringify(syncConfig));
+        $('syncStatus').textContent=`Senast kontrollerad ${new Date(syncConfig.lastCheck).toLocaleString('sv-SE')}. ${feed.events.length} giltiga pass. ${result.newVersion?'En ny schemaversion sparades.':'Schemat var oförändrat.'}`;
+        // Redovisa jämförelsen även om kalendern inte ändrades.
+        showPending(feed,result.diff);
+      }catch(e){syncError(`Synk misslyckades: ${e.name==='AbortError'?'Anslutningen tog för lång tid.':e.message}`);$('syncStatus').textContent='Ingen ny synk sparades.';}
+      finally{syncBusy=false;$('syncNow').disabled=false;$('syncConnect').disabled=false;}
+    }
+    $('syncConnect').addEventListener('click',()=>{
+      const url=$('syncEndpoint').value.trim().replace(/\/$/,'');const token=$('syncToken').value.trim();
+      $('syncError').hidden=true;
+      if(!validWorkerUrl(url)){syncError('Adressformatet måste vara https://...workers.dev och får inte vara din privata Quinyx-länk.');return;}
+      if(token.length<24){syncError('Välj en åtkomstnyckel på minst 24 tecken i Cloudflare och fyll i samma här.');return;}
+      syncConfig={...syncConfig,endpoint:url,remember:$('syncRememberToken').checked};
+      try{storeSyncConfig();}catch(e){syncError('Kunde inte spara synkinställningarna på enheten.');return;}
+      fetchQuinyx(true);
+    });
+    $('syncNow').addEventListener('click',()=>fetchQuinyx(true));
+    $('syncDisconnect').addEventListener('click',()=>{
+      syncConfig={endpoint:'',remember:false,lastCheck:syncConfig.lastCheck};
+      localStorage.removeItem(SYNC_CONFIG_KEY);localStorage.removeItem(SYNC_TOKEN_KEY);sessionStorage.removeItem(SYNC_TOKEN_KEY);
+      $('syncEndpoint').value='';$('syncToken').value='';$('syncRememberToken').checked=false;
+      $('syncStatus').textContent='Frånkopplad. Sparade arbetspass och schemaversioner finns kvar på den här enheten.';
+      $('syncChanges').hidden=true;$('syncApplyActions').hidden=true;$('syncError').hidden=true;pendingFeed=null;
+    });
+    $('syncApply').addEventListener('click',()=>{
+      if(!pendingFeed)return;
+      let added=0,updated=0,adopted=0,breakReview=0;
+      // Ta bara nya/ändrade pass – radera aldrig gamla betalda pass automatiskt.
+      for(const e of pendingFeed.events){
+        let match=state.shifts.find(p=>p.quinyxKey===e.key);
+        if(!match)match=state.shifts.find(p=>shiftSignature(p)===shiftSignature(e)&&!p.quinyxKey);
+        if(match){
+          if(match.quinyxKey){
+            const timeChanged=shiftSignature(match)!==shiftSignature(e);
+            const fileBreakChanged=match.breakSource==='file'&&e.breakSource==='file'&&
+              (match.breakStart!==e.breakStart||match.breakEnd!==e.breakEnd);
+            if(timeChanged||fileBreakChanged){
+              const candidate={...match,date:e.date,start:e.start,end:e.end};
+              if(candidate.breakSource==='auto'||candidate.breakSource==='none'||!candidate.breakSource){
+                // Anpassa tidigare automatiskt föreslagna raster när passet blir längre/kortare.
+                const proposed=state.breakRules.enabled?proposeBreak(candidate):null;
+                candidate.breakStart=proposed?.breakStart||'';candidate.breakEnd=proposed?.breakEnd||'';
+                candidate.breakSource=proposed?.origin||'none';breakReview++;
+              }else if(candidate.breakSource==='file'&&e.breakSource==='file'){
+                candidate.breakStart=e.breakStart;candidate.breakEnd=e.breakEnd;breakReview++;
+              }else if(candidate.breakSource==='manual'){
+                // En manuellt vald rast ska aldrig skrivas över utan kontroll.
+                breakReview++;
+              }
+              if(validate(candidate)){
+                const proposed=state.breakRules.enabled?proposeBreak(candidate):null;
+                candidate.breakStart=proposed?.breakStart||'';candidate.breakEnd=proposed?.breakEnd||'';
+                candidate.breakSource=proposed?.origin||'none';breakReview++;
+              }
+              Object.assign(match,candidate);updated++;
+            }
+          }
+          match.quinyxKey=e.key;adopted++;
+        }else{
+          const pass={date:e.date,start:e.start,end:e.end,breakStart:e.breakStart||'',breakEnd:e.breakEnd||'',
+            id:crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random(),quinyxKey:e.key,breakSource:e.breakSource||'none'};
+          if(!pass.breakStart&&state.breakRules.enabled){const proposed=proposeBreak(pass);pass.breakStart=proposed.breakStart;pass.breakEnd=proposed.breakEnd;pass.breakSource=proposed.origin;}
+          if(validate(pass))continue;
+          state.shifts.push(pass);added++;
+        }
+      }
+      save();render();
+      $('syncStatus').textContent=`Klart! ${added} nya pass, ${updated} uppdaterade pass och ${adopted} befintliga pass kopplades till Quinyx. ${breakReview?'Granska särskilt '+breakReview+' raster efter ändrade tider.':'Granska föreslagna raster och OB.'} Försvunna pass har inte raderats.`;
+      $('syncApplyActions').hidden=true;
+    });
+    // Manuellt godkänd import från .ics ger också historik, även innan Worker har installerats.
+    const oldFileChange=$('icsFile');
+    oldFileChange.addEventListener('change',async()=>{
+      latestFileText=null;const file=oldFileChange.files?.[0];if(!file||file.size>MAX_ICS_SIZE)return;
+      try{latestFileText=await file.text();}catch{}
+    });
+    $('importSubmit').addEventListener('click',()=>{
+      // Den gamla hanteraren körs först. Arkivera bara när filen faktiskt har godkänts.
+      if(!$('importSuccess').hidden&&latestFileText){
+        try{archiveFeed(parseFeed(latestFileText),'Kalenderfil');}
+        catch(e){$('syncStatus').textContent='Kalenderimporten sparades, men historiken kunde inte sparas: '+e.message;}
+        latestFileText=null;
+      }
+    });
+    function downloadJSON(filename,data){
+      const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'});
+      const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=filename;
+      document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+    }
+    $('downloadBackup').addEventListener('click',()=>{
+      downloadJSON(`butikslon-sakerhetskopia-${localISODate(new Date())}.json`,{
+        format:'ButiksLon-backup',version:5,created:new Date().toISOString(),
+        data:state,history:syncHistory,
+        // Hemlig nyckel och privat Quinyx-länk finns INTE med.
+        syncEndpoint:syncConfig.endpoint||''
+      });
+      $('syncStatus').textContent='Säkerhetskopia nedladdad. Förvara filen privat eftersom den innehåller dina arbetspass.';
+    });
+    $('restoreBackup').addEventListener('click',()=>$('restoreBackupFile').click());
+    $('restoreBackupFile').addEventListener('change',async()=>{
+      const f=$('restoreBackupFile').files?.[0];$('restoreBackupFile').value='';if(!f)return;
+      if(f.size>MAX_BACKUP_BYTES){syncError('Säkerhetskopian är för stor.');return;}
+      try{
+        const backup=JSON.parse(await f.text());
+        if(backup.format!=='ButiksLon-backup'||backup.version!==5||!backup.data||!Array.isArray(backup.data.shifts))throw new Error('Det här är ingen giltig ButiksLön 5.0-säkerhetskopia.');
+        if(backup.data.shifts.length>7000||backup.data.shifts.some(p=>validate(p)))throw new Error('Säkerhetskopian innehåller ogiltiga arbetspass.');
+        if(![backup.data.wage,backup.data.vacation,backup.data.tax].every(x=>typeof x==='number'&&Number.isFinite(x)))throw new Error('Ogiltiga löneinställningar.');
+        if(!Array.isArray(backup.history)||backup.history.length>MAX_HISTORY)throw new Error('Fel i historiken.');
+        for(const item of backup.history){if(!item||typeof item.id!=='string'||!Array.isArray(item.events)||item.events.length>MAX_ICS_EVENTS||item.events.some(e=>typeof e.key!=='string'||validate(e)))throw new Error('Ogiltig schemahistorik.');}
+        if(!confirm('Återställ säkerhetskopian? Detta ersätter dina nuvarande arbetspass, inställningar och sparade schemaversioner på den här enheten.'))return;
+        const newState={...backup.data,breakRules:verifiedBreakRules(backup.data.breakRules)};
+        localStorage.setItem(KEY,JSON.stringify(newState));localStorage.setItem(SYNC_HISTORY_KEY,JSON.stringify(backup.history));
+        location.reload();
+      }catch(err){syncError('Kunde inte återställa: '+err.message);}
+    });
+    initSync();
+    setInterval(()=>{if(document.visibilityState==='visible'&&syncConfig.endpoint&&$('syncToken').value.trim())fetchQuinyx(false);},30*60*1000);
+    document.addEventListener('visibilitychange',()=>{
+      if(document.visibilityState==='visible'&&syncConfig.endpoint&&$('syncToken').value.trim()&&
+        (!syncConfig.lastCheck||Date.now()-new Date(syncConfig.lastCheck).getTime()>30*60*1000))fetchQuinyx(false);
     });
 
     render();
